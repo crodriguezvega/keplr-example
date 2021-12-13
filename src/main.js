@@ -1,4 +1,4 @@
-const { SigningCosmosClient } = require("@cosmjs/launchpad");
+import { SigningStargateClient } from "@cosmjs/stargate";
 
 window.onload = async () => {
     // Keplr extension injects the offline signer that is compatible with cosmJS.
@@ -28,11 +28,11 @@ window.onload = async () => {
                     // Staking coin information
                     stakeCurrency: {
                         // Coin denomination to be displayed to the user.
-                        coinDenom: "ATOM",
+                        coinDenom: "STAKE",
                         // Actual denom (i.e. uatom, uscrt) used by the blockchain.
-                        coinMinimalDenom: "uatom",
+                        coinMinimalDenom: "stake",
                         // # of decimal points to convert minimal denomination to user-facing denomination.
-                        coinDecimals: 6,
+                        coinDecimals: 0,
                         // (Optional) Keplr can show the fiat value of the coin if a coingecko id is provided.
                         // You can get id from https://api.coingecko.com/api/v3/coins/list if it is listed.
                         // coinGeckoId: ""
@@ -67,11 +67,11 @@ window.onload = async () => {
                     // List of all coin/tokens used in this chain.
                     currencies: [{
                         // Coin denomination to be displayed to the user.
-                        coinDenom: "ATOM",
+                        coinDenom: "STAKE",
                         // Actual denom (i.e. uatom, uscrt) used by the blockchain.
-                        coinMinimalDenom: "uatom",
+                        coinMinimalDenom: "stake",
                         // # of decimal points to convert minimal denomination to user-facing denomination.
-                        coinDecimals: 6,
+                        coinDecimals: 0,
                         // (Optional) Keplr can show the fiat value of the coin if a coingecko id is provided.
                         // You can get id from https://api.coingecko.com/api/v3/coins/list if it is listed.
                         // coinGeckoId: ""
@@ -79,11 +79,11 @@ window.onload = async () => {
                     // List of coin/tokens used as a fee token in this chain.
                     feeCurrencies: [{
                         // Coin denomination to be displayed to the user.
-                        coinDenom: "ATOM",
+                        coinDenom: "STAKE",
                         // Actual denom (i.e. uatom, uscrt) used by the blockchain.
-                        coinMinimalDenom: "uatom",
+                        coinMinimalDenom: "stake",
                         // # of decimal points to convert minimal denomination to user-facing denomination.
-                        coinDecimals: 6,
+                        coinDecimals: 0,
                         // (Optional) Keplr can show the fiat value of the coin if a coingecko id is provided.
                         // You can get id from https://api.coingecko.com/api/v3/coins/list if it is listed.
                         // coinGeckoId: ""
@@ -129,11 +129,8 @@ window.onload = async () => {
     const accounts = await offlineSigner.getAccounts();
 
     // Initialize the gaia api with the offline signer that is injected by Keplr extension.
-    const cosmJS = new SigningCosmosClient(
-        "https://node-cosmoshub-3.keplr.app/rest",
-        accounts[0].address,
-        offlineSigner,
-    );
+    const rpcEndpoint =  "https://node-cosmoshub-3.keplr.app/rpc";
+    const client = await SigningStargateClient.connectWithSigner(rpcEndpoint, offlineSigner);    
 
     document.getElementById("address").append(accounts[0].address);
 };
@@ -148,29 +145,27 @@ document.sendForm.onsubmit = () => {
         return false;
     }
 
-    amount *= 1000000;
     amount = Math.floor(amount);
 
     (async () => {
-        // See above.
         const chainId = "cosmoshub-3";
         await window.keplr.enable(chainId);
         const offlineSigner = window.getOfflineSigner(chainId);
-
         const accounts = await offlineSigner.getAccounts();
 
-        // Initialize the gaia api with the offline signer that is injected by Keplr extension.
-        const cosmJS = new SigningCosmosClient(
-            "https://node-cosmoshub-3.keplr.app/rest",
-            accounts[0].address,
-            offlineSigner
-        );
+        // https://gist.github.com/webmaster128/8444d42a7eceeda2544c8a59fbd7e1d9
+        const rpcEndpoint =  "https://node-cosmoshub-3.keplr.app/rpc";
+        const client = await SigningStargateClient.connectWithSigner(rpcEndpoint, offlineSigner);      
 
-        const result = await cosmJS.sendTokens(recipient, [{
-            denom: "uatom",
+        const fee = {
+            amount: [{ amount: "2000", denom: "stake" }],
+            gas: "80000",
+        };
+        const result = await client.sendTokens(accounts[0].address, recipient, [{
+            denom: "stake",
             amount: amount.toString(),
-        }]);
-
+        }], fee);
+        
         console.log(result);
 
         if (result.code !== undefined &&
